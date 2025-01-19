@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# install_pdns_with_admin_docker.sh
-
 set -e
 
 echo "PowerDNS und PowerDNS-Admin Installation im Docker (Master/Slave Setup mit vereinfachter Docker-Installation)"
