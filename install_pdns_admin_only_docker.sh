@@ -40,6 +40,7 @@ if ! docker compose version &>/dev/null && ! docker-compose version &>/dev/null;
   echo "Docker Compose konnte nicht installiert werden. Bitte überprüfen Sie die Installation."
   exit 1
 fi
+
 # Überprüfen, ob powerdns_passwords.txt existiert
 PASSWORD_FILE="powerdns_passwords.txt"
 if [ ! -f "$PASSWORD_FILE" ]; then
