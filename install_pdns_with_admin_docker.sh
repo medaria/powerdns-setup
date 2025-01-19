@@ -2,7 +2,7 @@
 
 set -e
 
-echo "PowerDNS und PowerDNS-Admin Installation im Docker (Docker Compose Setup)"
+echo "PowerDNS und PowerDNS-Admin Installation im Docker (Master/Slave Setup)"
 
 # Überprüfen auf Root-Rechte
 if [ "$EUID" -ne 0 ]; then
@@ -17,6 +17,21 @@ DB_USER="pdns_user"
 DB_PASSWORD=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
 PDNS_API_KEY=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
 DOMAIN=""
+SETUP_TYPE=""
+MASTER_IPS=""
+
+# Setup-Typ anfordern
+while [[ "$SETUP_TYPE" != "master" && "$SETUP_TYPE" != "slave" ]]; do
+  read -p "Möchten Sie ein Master- oder Slave-Setup einrichten? (master/slave): " SETUP_TYPE
+done
+
+if [ "$SETUP_TYPE" == "slave" ]; then
+  read -p "Bitte geben Sie die Master-IP(s) ein (z. B. 192.168.1.10,192.168.1.11): " MASTER_IPS
+  if [ -z "$MASTER_IPS" ]; then
+    echo "Keine Master-IP(s) angegeben. Das Skript wird abgebrochen."
+    exit 1
+  fi
+fi
 
 # Domain anfordern
 read -p "Bitte geben Sie die Domain für PowerDNS-Admin ein (z. B. admin.example.com): " DOMAIN
@@ -31,6 +46,10 @@ echo "Generierte Zugangsdaten:"
 echo "Datenbank-Benutzer: $DB_USER"
 echo "Datenbank-Passwort: $DB_PASSWORD"
 echo "PDNS API Key: $PDNS_API_KEY"
+echo "Setup-Typ: $SETUP_TYPE"
+if [ "$SETUP_TYPE" == "slave" ]; then
+  echo "Master-IP(s): $MASTER_IPS"
+fi
 echo "Domain: $DOMAIN"
 echo "Stats URL: $STATS_URL"
 
@@ -62,6 +81,20 @@ services:
       - PDNS_webserver=yes
       - PDNS_webserver-address=0.0.0.0
       - PDNS_webserver-port=8081
+EOL
+
+if [ "$SETUP_TYPE" == "master" ]; then
+  cat <<EOL >> docker-compose.yml
+      - PDNS_slave=no
+EOL
+elif [ "$SETUP_TYPE" == "slave" ]; then
+  cat <<EOL >> docker-compose.yml
+      - PDNS_slave=yes
+      - PDNS_master=$MASTER_IPS
+EOL
+fi
+
+cat <<EOL >> docker-compose.yml
     ports:
       - "53:53/udp"
       - "53:53/tcp"
@@ -116,4 +149,8 @@ echo "Zugangsdaten:"
 echo "Datenbank-Benutzer: $DB_USER"
 echo "Datenbank-Passwort: $DB_PASSWORD"
 echo "PDNS API Key: $PDNS_API_KEY"
+echo "Setup-Typ: $SETUP_TYPE"
+if [ "$SETUP_TYPE" == "slave" ]; then
+  echo "Master-IP(s): $MASTER_IPS"
+fi
 echo "Besuche: https://$DOMAIN"
