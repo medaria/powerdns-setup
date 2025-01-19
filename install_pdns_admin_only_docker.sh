@@ -2,7 +2,7 @@
 
 set -e
 
-echo "PowerDNS-Admin Installation im Docker (ohne PowerDNS, mit Architekturprüfung)"
+echo "PowerDNS-Admin Installation im Docker (ohne PowerDNS, mit Architekturprüfung und Docker Compose-Fix)"
 
 # Überprüfen auf Root-Rechte
 if [ "$EUID" -ne 0 ]; then
@@ -35,6 +35,20 @@ apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 # Sicherstellen, dass Docker aktiviert ist
 systemctl start docker
 systemctl enable docker
+
+# Überprüfen, ob das Docker Compose Plugin funktioniert
+if ! docker compose version &>/dev/null; then
+  echo "Docker Compose Plugin konnte nicht gefunden werden. Versuche, das Legacy-Compose zu installieren..."
+  curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  chmod +x /usr/local/bin/docker-compose
+  ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
+fi
+
+# Überprüfen, ob Docker Compose erfolgreich installiert wurde
+if ! docker-compose version &>/dev/null && ! docker compose version &>/dev/null; then
+  echo "Docker Compose konnte nicht installiert werden. Bitte überprüfen Sie die Installation."
+  exit 1
+fi
 
 # Überprüfen, ob powerdns_passwords.txt existiert
 PASSWORD_FILE="powerdns_passwords.txt"
@@ -95,7 +109,7 @@ EOL
 
 # Docker-Compose-Setup starten
 echo "Docker-Compose-Setup wird gestartet..."
-docker-compose up -d
+docker compose up -d || docker-compose up -d
 
 # Status anzeigen
 echo "PowerDNS-Admin Docker-Setup wurde gestartet!"
