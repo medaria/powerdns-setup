@@ -25,11 +25,14 @@ if [ -z "$DOMAIN" ]; then
   exit 1
 fi
 
+STATS_URL="http://$DOMAIN:8081/"
+
 echo "Generierte Zugangsdaten:"
 echo "Datenbank-Benutzer: $DB_USER"
 echo "Datenbank-Passwort: $DB_PASSWORD"
 echo "PDNS API Key: $PDNS_API_KEY"
 echo "Domain: $DOMAIN"
+echo "Stats URL: $STATS_URL"
 
 # Installiere Docker und Docker Compose, falls nicht vorhanden
 echo "Installiere Docker und Docker Compose..."
@@ -76,7 +79,7 @@ services:
       - FLASK_ENV=production
       - SECRET_KEY=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
       - SQLALCHEMY_DATABASE_URI=mysql+pymysql://$DB_USER:$DB_PASSWORD@db/$DB_NAME
-      - PDNS_STATS_URL=http://powerdns:8081/
+      - PDNS_STATS_URL=$STATS_URL
       - PDNS_API_KEY=$PDNS_API_KEY
       - EXTERNAL_URL=https://$DOMAIN
     depends_on:
