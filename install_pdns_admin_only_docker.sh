@@ -2,7 +2,7 @@
 
 set -e
 
-echo "PowerDNS-Admin Installation im Docker (ohne PowerDNS, mit vereinfachter Docker-Installation)"
+echo "PowerDNS-Admin Installation im Docker (mit automatischer Plattformanpassung)"
 
 # Überprüfen auf Root-Rechte
 if [ "$EUID" -ne 0 ]; then
@@ -13,9 +13,9 @@ fi
 # Erkennen der Systemarchitektur
 ARCH=$(dpkg --print-architecture)
 if [ "$ARCH" == "amd64" ]; then
-  DOCKER_ARCH="x86_64"
+  DOCKER_ARCH="linux/amd64"
 elif [ "$ARCH" == "arm64" ]; then
-  DOCKER_ARCH="arm64"
+  DOCKER_ARCH="linux/arm64"
 else
   echo "Nicht unterstützte Architektur: $ARCH"
   exit 1
@@ -87,6 +87,14 @@ services:
     image: ngoduykhanh/powerdns-admin:latest
     container_name: powerdns-admin
     restart: always
+EOL
+
+# Plattform-Support nur für ARM64 hinzufügen
+if [ "$DOCKER_ARCH" == "linux/arm64" ]; then
+  echo "    platform: linux/amd64" >> docker-compose.yml
+fi
+
+cat <<EOL >> docker-compose.yml
     ports:
       - "9191:80"
     environment:
