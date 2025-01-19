@@ -1,0 +1,116 @@
+#!/bin/bash
+
+set -e
+
+echo "PowerDNS und PowerDNS-Admin Installation im Docker (Docker Compose Setup)"
+
+# Überprüfen auf Root-Rechte
+if [ "$EUID" -ne 0 ]; then
+  echo "Bitte führen Sie dieses Skript als Root oder mit sudo aus."
+  exit 1
+fi
+
+# Variablen
+INSTALL_DIR="/opt/pdns_with_admin"
+DB_NAME="pdns"
+DB_USER="pdns_user"
+DB_PASSWORD=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
+PDNS_API_KEY=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
+DOMAIN=""
+
+# Domain anfordern
+read -p "Bitte geben Sie die Domain für PowerDNS-Admin ein (z. B. admin.example.com): " DOMAIN
+if [ -z "$DOMAIN" ]; then
+  echo "Es wurde keine Domain angegeben. Das Skript wird abgebrochen."
+  exit 1
+fi
+
+echo "Generierte Zugangsdaten:"
+echo "Datenbank-Benutzer: $DB_USER"
+echo "Datenbank-Passwort: $DB_PASSWORD"
+echo "PDNS API Key: $PDNS_API_KEY"
+echo "Domain: $DOMAIN"
+
+# Installiere Docker und Docker Compose, falls nicht vorhanden
+echo "Installiere Docker und Docker Compose..."
+apt update && apt install -y docker.io docker-compose-plugin
+
+# Erstelle das Installationsverzeichnis
+mkdir -p "$INSTALL_DIR"
+cd "$INSTALL_DIR"
+
+# Docker-Compose-Konfiguration erstellen
+echo "Docker-Compose-Konfiguration wird erstellt..."
+cat <<EOL > docker-compose.yml
+version: '3'
+
+services:
+  powerdns:
+    image: powerdns/pdns:latest
+    container_name: powerdns
+    restart: always
+    environment:
+      - PDNS_gmysql-host=db
+      - PDNS_gmysql-user=$DB_USER
+      - PDNS_gmysql-password=$DB_PASSWORD
+      - PDNS_gmysql-dbname=$DB_NAME
+      - PDNS_api=yes
+      - PDNS_api-key=$PDNS_API_KEY
+      - PDNS_webserver=yes
+      - PDNS_webserver-address=0.0.0.0
+      - PDNS_webserver-port=8081
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "8081:8081"
+    depends_on:
+      - db
+
+  powerdns-admin:
+    image: ngoduykhanh/powerdns-admin:latest
+    container_name: powerdns-admin
+    restart: always
+    ports:
+      - "9191:80"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
+      - SQLALCHEMY_DATABASE_URI=mysql+pymysql://$DB_USER:$DB_PASSWORD@db/$DB_NAME
+      - PDNS_STATS_URL=http://powerdns:8081/
+      - PDNS_API_KEY=$PDNS_API_KEY
+      - EXTERNAL_URL=https://$DOMAIN
+    depends_on:
+      - powerdns
+      - db
+
+  db:
+    image: mariadb:10.5
+    container_name: powerdns-db
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
+      - MYSQL_DATABASE=$DB_NAME
+      - MYSQL_USER=$DB_USER
+      - MYSQL_PASSWORD=$DB_PASSWORD
+    volumes:
+      - db_data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+
+volumes:
+  db_data:
+EOL
+
+# Docker-Compose-Setup starten
+echo "Docker-Compose-Setup wird gestartet..."
+docker-compose up -d
+
+# Status anzeigen
+echo "PowerDNS und PowerDNS-Admin Docker-Setup wurde gestartet!"
+echo "Zugangsdaten:"
+echo "Datenbank-Benutzer: $DB_USER"
+echo "Datenbank-Passwort: $DB_PASSWORD"
+echo "PDNS API Key: $PDNS_API_KEY"
+echo "Besuche: https://$DOMAIN"
