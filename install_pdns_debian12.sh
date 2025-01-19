@@ -93,6 +93,7 @@ api-key=$PDNS_API_KEY
 webserver=yes
 webserver-address=0.0.0.0
 webserver-port=8081
+webserver-allow-from=0.0.0.0/0
 EOL
 
 # Datenbankschema importieren
