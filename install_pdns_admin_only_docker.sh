@@ -2,13 +2,39 @@
 
 set -e
 
-echo "PowerDNS-Admin Installation im Docker (ohne PowerDNS)"
+echo "PowerDNS-Admin Installation im Docker (ohne PowerDNS, mit Architekturprüfung)"
 
 # Überprüfen auf Root-Rechte
 if [ "$EUID" -ne 0 ]; then
   echo "Bitte führen Sie dieses Skript als Root oder mit sudo aus."
   exit 1
 fi
+
+# Erkennen der Systemarchitektur
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" == "amd64" ]; then
+  DOCKER_ARCH="x86_64"
+elif [ "$ARCH" == "arm64" ]; then
+  DOCKER_ARCH="arm64"
+else
+  echo "Nicht unterstützte Architektur: $ARCH"
+  exit 1
+fi
+
+echo "Erkannte Architektur: $DOCKER_ARCH"
+
+# Docker und Docker Compose installieren
+echo "Installiere Docker und Docker Compose..."
+apt update
+apt install -y apt-transport-https ca-certificates curl software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+add-apt-repository "deb [arch=$ARCH] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Sicherstellen, dass Docker aktiviert ist
+systemctl start docker
+systemctl enable docker
 
 # Überprüfen, ob powerdns_passwords.txt existiert
 PASSWORD_FILE="powerdns_passwords.txt"
@@ -40,10 +66,6 @@ echo "PowerDNS-Admin-Passwort: $DB_PASSWORD"
 echo "PowerDNS-API-Key: $PDNS_API_KEY"
 echo "Stats URL: $STATS_URL"
 echo "Domain: $DOMAIN"
-
-# Installiere Docker und Docker Compose, falls nicht vorhanden
-echo "Installiere Docker und Docker Compose..."
-apt update && apt install -y docker.io docker-compose-plugin
 
 # Installationsverzeichnis erstellen
 INSTALL_DIR="/opt/pdns_admin_only"
