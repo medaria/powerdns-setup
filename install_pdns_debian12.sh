@@ -73,6 +73,16 @@ webserver-address=0.0.0.0
 webserver-port=8081
 EOL
 
+# Datenbankschema importieren
+echo "Importiere Datenbankschema für PowerDNS..."
+SCHEMA_PATH=$(find /usr/share -name "schema.mysql.sql" | head -n 1)
+if [ -z "$SCHEMA_PATH" ]; then
+  echo "Fehler: Datenbankschema nicht gefunden!"
+  exit 1
+fi
+
+mysql -u root -p"$ROOT_PASSWORD" "$DB_NAME" < "$SCHEMA_PATH"
+
 # DNS-Standarddienste deaktivieren
 echo "Deaktivieren der Standard-DNS-Funktionalität..."
 
