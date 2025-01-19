@@ -17,11 +17,33 @@ DB_PASSWORD=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
 PDNS_API_KEY=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
 ROOT_PASSWORD=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
 
+# Datei zum Speichern der Zugangsdaten
+CREDENTIALS_FILE="/root/pdns_credentials.txt"
+
+# Zugangsdaten ausgeben und in Datei speichern
 echo "Generierte Zugangsdaten:"
 echo "Datenbank-Benutzer: $DB_USER"
 echo "Datenbank-Passwort: $DB_PASSWORD"
 echo "MySQL Root-Passwort: $ROOT_PASSWORD"
 echo "PDNS API Key: $PDNS_API_KEY"
+
+cat <<EOL > "$CREDENTIALS_FILE"
+PowerDNS Zugangsdaten:
+----------------------
+Datenbank:
+  Name: $DB_NAME
+  Benutzer: $DB_USER
+  Passwort: $DB_PASSWORD
+
+MySQL Root-Passwort:
+  $ROOT_PASSWORD
+
+PowerDNS API Key:
+  $PDNS_API_KEY
+EOL
+
+chmod 600 "$CREDENTIALS_FILE"
+echo "Zugangsdaten wurden in $CREDENTIALS_FILE gespeichert."
 
 # Repository hinzufügen
 echo "Füge PowerDNS-Repository hinzu..."
